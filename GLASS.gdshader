@@ -27,7 +27,8 @@ uniform float specular_contribution = 0.2;
 uniform float refraction_contribution = 1.0;
 
 group_uniforms uv;
-uniform vec3 uv1_scale;
+uniform vec3 uv1_scale = vec3(1.0);
+uniform vec3 uv1_offset = vec3(0.0);
 
 float SchlickFresnel(float u) {
 	float m = 1.0 - u;
@@ -35,9 +36,11 @@ float SchlickFresnel(float u) {
 	return m2 * m2 * m;
 }
 
+void vertex() {
+	UV=UV*uv1_scale.xy+uv1_offset.xy;
+}
+
 void fragment() {
-	vec2 base_uv = UV;
-	
 	NORMAL_MAP = texture(normal_map, UV).xyz;
 	NORMAL_MAP_DEPTH = normal_strength;
 	
@@ -49,21 +52,20 @@ void fragment() {
 	
 	float a = mix(0.001, 1.0, albedo_mix.a);
 	float a_factor_0 = mix(fresnel * edge_color.a, 1.0, a);
-	float a_factor_1 = 0.5 * sqrt(ALPHA);
+	float a_factor_1 = 0.5 * sqrt(a);
 	float a_factor_2 = a_factor_0 + a_factor_1;
-	//ALPHA = a_factor_0;
-	//ALPHA += a_factor_1;
+	
 	ALBEDO = mix(edge_color.rgb * edge_color.a, albedo_mix.rgb * surface_contribution, a);
 	ROUGHNESS = roughness_mix;
-	SPECULAR = 0.5 * inversesqrt(ALPHA*specular_contribution);
+	SPECULAR = 0.5 * inversesqrt(specular_contribution);
 	
 	vec3 unpacked_normal = NORMAL_MAP;
 	unpacked_normal.xy = unpacked_normal.xy * 2.0 - 1.0;
 	unpacked_normal.z = sqrt(max(0.0, 1.0 - dot(unpacked_normal.xy, unpacked_normal.xy)));
-	vec3 ref_normal = normalize( mix(NORMAL,TANGENT * unpacked_normal.x + BINORMAL * unpacked_normal.y + NORMAL * unpacked_normal.z,NORMAL_MAP_DEPTH) );
-	vec2 ref_ofs = SCREEN_UV - ref_normal.xy * dot(texture(texture_refraction,base_uv),refraction_texture_channel) * refraction;
+	vec3 ref_normal = normalize(mix(NORMAL,TANGENT * unpacked_normal.x + BINORMAL * unpacked_normal.y + NORMAL * unpacked_normal.z,NORMAL_MAP_DEPTH));
+	vec2 ref_ofs = SCREEN_UV - ref_normal.xy * dot(texture(texture_refraction, UV),refraction_texture_channel) * refraction;
 	float ref_amount = 1.0 - albedo_mix.a;
 	
-	EMISSION += (textureLod(screen_texture,ref_ofs,ROUGHNESS * 8.0).rgb * ref_amount * EXPOSURE * albedo_mix.rgb*refraction_contribution)/a_factor_2;
+	EMISSION += mix(edge_color.rgb, (textureLod(screen_texture,ref_ofs,ROUGHNESS * 8.0).rgb * ref_amount * EXPOSURE * albedo_mix.rgb*refraction_contribution)/a_factor_2, a);
 	ALBEDO *= 1.0 - ref_amount;
 }

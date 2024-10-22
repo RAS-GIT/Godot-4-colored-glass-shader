@@ -65,7 +65,6 @@ void fragment() {
 	vec3 ref_normal = normalize(mix(NORMAL,TANGENT * unpacked_normal.x + BINORMAL * unpacked_normal.y + NORMAL * unpacked_normal.z,NORMAL_MAP_DEPTH));
 	vec2 ref_ofs = SCREEN_UV - ref_normal.xy * dot(texture(texture_refraction, UV),refraction_texture_channel) * refraction;
 	float ref_amount = 1.0 - albedo_mix.a;
-	
-	EMISSION += mix(edge_color.rgb, (textureLod(screen_texture,ref_ofs,ROUGHNESS * 8.0).rgb * ref_amount * EXPOSURE * albedo_mix.rgb*refraction_contribution)/a_factor_2, a);
+	EMISSION += (textureLod(screen_texture,ref_ofs,ROUGHNESS * 8.0).rgb * ref_amount * EXPOSURE * mix(vec3(mix(0.02, 0.1, a)), albedo_mix.rgb*refraction_contribution, a))/a_factor_2;
 	ALBEDO *= 1.0 - ref_amount;
 }
